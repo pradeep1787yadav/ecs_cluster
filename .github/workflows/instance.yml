@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     # Define inputs that are required for the manual trigger
     inputs:
-      instanceName:
-        description: 'Name of the AWS Instance'  # Name of the EC2 instance
+      Cluster_Name:
+        description: 'Name of the ECS Cluster'  # Name of the EC2 instance
         required: true  # This input is required
       awsRegion:
         description: 'AWS Region for the instance'  # AWS region where the instance will be created
@@ -60,7 +60,7 @@ jobs:
 
       # Apply the Terraform plan to create the EC2 instance
       - name: Terraform Apply
-        run: terraform apply -var instanceName=${{ github.event.inputs.instanceName }} -var awsRegion=${{ github.event.inputs.awsRegion }} -var instanceType=${{ github.event.inputs.instanceType }} -auto-approve
+        run: terraform apply -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var awsRegion=${{ github.event.inputs.awsRegion }} -auto-approve
         working-directory: .
 
   # Job for destroying the EC2 instance
@@ -94,5 +94,5 @@ jobs:
       
       # Destroy the resources managed by Terraform
       - name: Terraform Destroy
-        run: terraform destroy -var instanceName=${{ github.event.inputs.instanceName }} -var awsRegion=${{ github.event.inputs.awsRegion }} -var instanceType=${{ github.event.inputs.instanceType }} -auto-approve
+        run: terraform destroy -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var awsRegion=${{ github.event.inputs.awsRegion }} -auto-approve
         working-directory: .
