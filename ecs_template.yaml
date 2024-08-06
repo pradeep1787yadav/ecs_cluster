@@ -75,9 +75,8 @@ spec:
         repoUrl: 'github.com?repo=ecs_cluster&owner=pradeep1787yadav'
         branchOrTagName: 'main'
         workflowInputs:
-          instanceName: ${{ parameters.InstanceName }}
-          awsRegion: ${{ parameters.Region }}
-          instanceType: ${{ parameters.InstanceType }}
+          Cluster_Name: ${{ parameters.Cluster_Name }}
+          Region: ${{ parameters.Region }}
           action: ${{ parameters.action }}
 
     # - id: register_app
