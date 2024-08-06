@@ -1,5 +1,5 @@
 # Define the name of the GitHub Action workflow
-name: Create an EC2 instance
+name: ECS Cluster Deploy Drupal
 
 # This workflow is manually triggered using the GitHub Actions UI
 on:
