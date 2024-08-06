@@ -9,3 +9,4 @@ metadata:
 spec:
   type: service
   owner: user:pradeep1787yadav
+  lifecycle: Experimental
