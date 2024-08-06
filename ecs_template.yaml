@@ -78,6 +78,7 @@ spec:
           Cluster_Name: ${{ parameters.Cluster_Name }}
           Region: ${{ parameters.Region }}
           action: ${{ parameters.action }}
+          instanceType: "t2.small"
 
     # - id: register_app
     #   name: Register Application
