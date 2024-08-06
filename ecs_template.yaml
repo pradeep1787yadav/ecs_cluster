@@ -1,7 +1,7 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: ECS_CLUSTER
+  name: ECS_CLUSTERS
   title: Create an ECS cluster to Deploy Drupal
   description: Create an ECS cluster to deploy Drupal
   tags:
