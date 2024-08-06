@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ecs_cluster
+  annotations:
+    github.com/project-slug: pradeep1787yadav/ecs_cluster
+  title: 'IA for Instance Automation'
+  description: An example of an Instance Creation
+spec:
+  type: service
+  owner: user:pradeep1787yadav
+  lifecycle: experimental

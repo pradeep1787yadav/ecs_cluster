@@ -1,0 +1,99 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ECS_CLUSTER
+  title: Create an ECS cluster
+  description: Create an ECS cluster to deploy your application
+  tags:
+    - recommended
+spec:
+  owner: pradeep1787yadav
+  type: service
+  parameters:
+    - title: ECS Cluster
+      required:
+        - Cluster_Name
+        - Region
+        - action
+      properties:
+        Cluster_Name:
+          title: Cluster_Name
+          type: string
+          description: Name of the Instance to be created
+          ui:autofocus: true
+          ui:options:
+            rows: 5
+        Region:
+          title: AWS Region
+          type: string
+          description: Name of the region where you want to create your instance, e.g., us-east-1, ap-south-1, etc.
+          enum:
+            - "eu-west-2"
+        action:
+          title: Action
+          type: string
+          description: What action do you want to perform? Create or delete?
+          enum:
+            - apply
+            - destroy
+
+    - title: Choose a Repository Location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Location of the repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com        
+
+  steps:
+    - id: fetch-base
+      name: Fetching Details from content folder
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          name: ${{ parameters.InstanceName }}
+
+    # - id: publish
+    #   name: Publish
+    #   action: publish:github
+    #   input:
+    #     allowedHosts:
+    #       - github.com
+    #     description: This is ${{ parameters.InstanceName }}
+    #     repoUrl: ${{ parameters.repoUrl }}
+
+    - id: github-action
+      name: Starting GitHub Action
+      action: github:actions:dispatch
+      input:
+        workflowId: instance.yml
+        repoUrl: 'github.com?repo=ecs_cluster&owner=pradeep1787yadav'
+        branchOrTagName: 'main'
+        workflowInputs:
+          instanceName: ${{ parameters.InstanceName }}
+          awsRegion: ${{ parameters.Region }}
+          instanceType: ${{ parameters.InstanceType }}
+          action: ${{ parameters.action }}
+
+    # - id: register_app
+    #   name: Register Application
+    #   action: catalog:register
+    #   input:
+    #     catalogInfo:
+    #       apiVersion: backstage.io/v1alpha1
+    #       kind: Component
+    #       metadata:
+    #         name: ${{ parameters.InstanceName }}
+    #         annotations:
+    #           github.com/project-slug: pradeep1787yadav/ecs_cluster
+    #         title: 'IA for Instance Automation'
+    #         description: An example of an Instance Creation
+    #       spec:
+    #         type: service
+    #         owner: user:pradeep1787yadav
+    #         lifecycle: experimental
