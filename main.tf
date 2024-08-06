@@ -106,7 +106,7 @@ resource "aws_ecs_task_definition" "drupal_task" {
   container_definitions = jsonencode([
     {
       name      = "postgres"
-      image     = "drupal"
+      image     = "postgres"
       essential = true
       portMappings = [{
         containerPort = 5432
@@ -129,7 +129,7 @@ resource "aws_ecs_task_definition" "drupal_task" {
     },
     {
       name      = "drupal"
-      image     = "drupal:php8.3-fpm-alpine3.20"
+      image     = "drupal:10"
       essential = true
       portMappings = [{
         containerPort = 80
