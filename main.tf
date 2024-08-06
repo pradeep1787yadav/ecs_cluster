@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-west-2"
+  region = var.Region
 }
 
 # Get default VPC

@@ -1,3 +1,4 @@
 variable "cluster_name" {
-    default = "test"
 }
+
+variable "Region" {}

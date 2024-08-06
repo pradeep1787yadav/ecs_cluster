@@ -9,7 +9,7 @@ on:
       Cluster_Name:
         description: 'Name of the ECS Cluster'  # Name of the EC2 instance
         required: true  # This input is required
-      awsRegion:
+      Region:
         description: 'AWS Region for the instance'  # AWS region where the instance will be created
         required: true  # This input is required
       instanceType:
@@ -41,7 +41,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.awsRegion }}
+          aws-region: ${{ github.event.inputs.Region }}
 
       # Initialize Terraform
       - name: Terraform Init
@@ -60,7 +60,7 @@ jobs:
 
       # Apply the Terraform plan to create the EC2 instance
       - name: Terraform Apply
-        run: terraform apply -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var awsRegion=${{ github.event.inputs.awsRegion }} -auto-approve
+        run: terraform apply -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
         working-directory: .
 
   # Job for destroying the EC2 instance
@@ -80,7 +80,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.awsRegion }}
+          aws-region: ${{ github.event.inputs.Region }}
         
       # Initialize Terraform
       - name: Terraform Init
@@ -94,5 +94,5 @@ jobs:
       
       # Destroy the resources managed by Terraform
       - name: Terraform Destroy
-        run: terraform destroy -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var awsRegion=${{ github.event.inputs.awsRegion }} -auto-approve
+        run: terraform destroy -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
         working-directory: .
