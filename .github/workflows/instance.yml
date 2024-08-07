@@ -18,7 +18,8 @@ on:
       action:
         description: 'Action to perform (apply/destroy)'  # Action to be performed (create or delete the instance)
         required: true  # This input is required
-
+      port_context:
+        description: "Port Context"
 # Jobs to be executed in this workflow
 jobs:
   # Job for applying the EC2 instance
