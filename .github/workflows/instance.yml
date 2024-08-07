@@ -12,7 +12,7 @@ on:
       action:
         description: "Action to perform (apply/destroy)"
         required: true
-      context:
+      port_context:
         required: true
         description: "Port's payload (who triggered, context, etc...)"
         type: string
@@ -31,7 +31,7 @@ jobs:
       CLUSTER_NAME: ${{ github.event.inputs.Cluster_Name }}
       REGION: ${{ github.event.inputs.Region }}
       ACTION: ${{ github.event.inputs.action }}
-      PORT_RUN_ID: ${{ fromJson(inputs.context).runId }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
 
     steps:
       - name: Checkout code
