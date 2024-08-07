@@ -1,101 +1,102 @@
-# Define the name of the GitHub Action workflow
-name: ECS Cluster Deploy Drupal
+name: Manage ECS Cluster
 
-# This workflow is manually triggered using the GitHub Actions UI
 on:
   workflow_dispatch:
-    # Define inputs that are required for the manual trigger
     inputs:
       Cluster_Name:
-        description: 'Name of the ECS Cluster'  # Name of the EC2 instance
-        required: true  # This input is required
-      Region:
-        description: 'AWS Region for the instance'  # AWS region where the instance will be created
-        required: true  # This input is required
-      # instanceType:
-      #   description: 'AWS instance type'  # Type of the EC2 instance (e.g., t2.micro)
-      #   required: true  # This input is required
-      action:
-        description: 'Action to perform (apply/destroy)'  # Action to be performed (create or delete the instance)
-        required: true  # This input is required
-      port_context:
-        description: "port_context"
+        description: "Name of the ECS cluster"
         required: true
+      Region:
+        description: "AWS Region for the cluster"
+        required: true
+      action:
+        description: "Action to perform (apply/destroy)"
+        required: true
+      context:
+        required: true
+        description: "Port's payload (who triggered, context, etc...)"
+        type: string
 
-# Jobs to be executed in this workflow
 jobs:
-  # Job for applying the EC2 instance
-  apply-ecs-cluster:
-    # Use the latest Ubuntu runner
+  manage_cluster: # Combine into a single job
     runs-on: ubuntu-latest
-    
-    # Execute this job only if the action input is "apply"
-    if: ${{ github.event.inputs.action == 'apply' }}
-    
-    # Define the steps for this job
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+    if: ${{ github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy' }}
+
+    env:
+      CLUSTER_NAME: ${{ github.event.inputs.Cluster_Name }}
+      REGION: ${{ github.event.inputs.Region }}
+      ACTION: ${{ github.event.inputs.action }}
+      PORT_RUN_ID: ${{ fromJson(inputs.context).runId }}
+
     steps:
-      # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Configure AWS credentials. Please store the value of these keys in GitHub secrets
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Create a log message (apply)
+        if: ${{ github.event.inputs.action == 'apply' }}
+        uses: port-labs/port-github-action@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.Region }}
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Initiating creation of ECS cluster: ${{ env.Cluster_Name }}."
 
-      # Initialize Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
       - name: Terraform Init
         run: terraform init
-        working-directory: .  # Assuming your Terraform files are in the root directory
 
-      # Format Terraform code
       - name: Terraform Format
         run: terraform fmt
-        working-directory: .
 
-      # Validate the Terraform code
       - name: Terraform Validate
         run: terraform validate
-        working-directory: .
 
-      # Apply the Terraform plan to create the EC2 instance
       - name: Terraform Apply
-        run: terraform apply -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
-        working-directory: .
+        id: terraform_apply
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_cluster_name: ${{ env.Cluster_Name }}
+          TF_VAR_region: ${{ env.REGION }}
+          TF_VAR_port_run_id: ${{ env.PORT_RUN_ID }}
 
-  # Job for destroying the EC2 instance
-  destroy-ecs-cluster:
-    runs-on: ubuntu-latest
-    
-    # Execute this job only if the action input is "destroy"
-    if: ${{ github.event.inputs.action == 'destroy' }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      
-      # Configure AWS credentials. Please store the value of these keys in GitHub secrets
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.Region }}
-        
-      # Initialize Terraform
-      - name: Terraform Init
-        run: terraform init
-        working-directory: .
-      
-      # Format Terraform code
-      - name: Terraform Format
-        run: terraform fmt
-        working-directory: .
-      
-      # Destroy the resources managed by Terraform
       - name: Terraform Destroy
-        run: terraform destroy -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
-        working-directory: .
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: terraform destroy -auto-approve
+        env:
+          TF_VAR_cluster_name: ${{ env.Cluster_Name }}
+          TF_VAR_region: ${{ env.REGION }}
+          TF_VAR_port_run_id: ${{ env.PORT_RUN_ID }}
+
+      - name: Inform Port about the status of the ECS cluster creation
+        if: ${{ github.event.inputs.action == 'apply' }}
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          status: "SUCCESS"
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "ECS cluster creation has been completed: ${{ env.CLUSTER_NAME }}"
+
+      - name: Inform Port about the status of the ECS cluster destruction
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          status: "SUCCESS"
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "ECS cluster destruction has been completed: ${{ env.Cluster_Name }}"
