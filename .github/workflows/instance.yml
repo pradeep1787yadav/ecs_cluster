@@ -22,6 +22,9 @@ on:
         required: true
         description: includes blueprint, run ID, and entity identifier from Port.
         type: string
+      Cluster_Name:
+      Region:
+      action:
 
 jobs:
   scaffold-a-repository:
