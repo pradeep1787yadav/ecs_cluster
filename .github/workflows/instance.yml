@@ -15,9 +15,11 @@ on:
       visibility:
         type: string
         required: true
+        default: "public"
       escalation_policy:
         type: string
         required: true
+        default: "true"
       port_context:
         required: true
         description: includes blueprint, run ID, and entity identifier from Port.
