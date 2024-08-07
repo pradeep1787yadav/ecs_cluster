@@ -12,9 +12,9 @@ on:
       Region:
         description: 'AWS Region for the instance'  # AWS region where the instance will be created
         required: true  # This input is required
-      instanceType:
-        description: 'AWS instance type'  # Type of the EC2 instance (e.g., t2.micro)
-        required: true  # This input is required
+      # instanceType:
+      #   description: 'AWS instance type'  # Type of the EC2 instance (e.g., t2.micro)
+      #   required: true  # This input is required
       action:
         description: 'Action to perform (apply/destroy)'  # Action to be performed (create or delete the instance)
         required: true  # This input is required
