@@ -1,31 +1,33 @@
-name: ECS Cluster Deploy Drupal
+name: Scaffold a repository
 
 on:
   workflow_dispatch:
     inputs:
-      Cluster_Name:
+      name:
         type: string
-        description: 'Name of the ECS Cluster'
         required: true
-      Region:
+      description:
         type: string
-        description: 'AWS Region for the instance'
+        required: false
+      readme:
+        type: boolean
+        required: false
+      visibility:
+        type: string
         required: true
-      action:
+      escalation_policy:
         type: string
-        description: 'Action to perform (apply/destroy)'
         required: true
       port_context:
-        type: string
-        description: "Port context, includes blueprint, run ID, and entity identifier from Port."
         required: true
+        description: includes blueprint, run ID, and entity identifier from Port.
+        type: string
 
 jobs:
-  apply-ecs-cluster:
+  scaffold-a-repository:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.action == 'apply' }}
     steps:
-      - name: Inform starting ECS cluster creation
+      - name: Inform starting of repository creation
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -33,35 +35,15 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: |
-              Creating ECS cluster... 🚨
+              Creating GitHub repository... 🚨
 
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Create GitHub repository
+        id: create_repo
+        run: gh repo create ${{ inputs.name }} --${{ inputs.visibility }} ${{ inputs.description != 'null' && format('--description "{0}"', inputs.description) || ''}} ${{ inputs.readme && '--add-readme' || ''}}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.Region }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: .
-
-      - name: Terraform Format
-        run: terraform fmt
-        working-directory: .
-
-      - name: Terraform Validate
-        run: terraform validate
-        working-directory: .
-
-      - name: Terraform Apply
-        run: terraform apply -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
-        working-directory: .
-
-      - name: Inform completion of ECS cluster creation
+      - name: Inform completion of repository creation
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -69,13 +51,9 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: |
-              ECS cluster created successfully! ✅
+              GitHub repository created 🔥
 
-  destroy-ecs-cluster:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.action == 'destroy' }}
-    steps:
-      - name: Inform starting ECS cluster destruction
+      - name: Inform upsertion of GitHub repo
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -83,31 +61,26 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: |
-              Destroying ECS cluster... 🚨
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+              Upserting GitHub repository... 🚨
+      
+      - name: Upsert GitHub repository
+        uses: port-labs/port-github-action@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.Region }}
+          identifier: "${{ inputs.name }}"
+          title: "${{ inputs.name }}"
+          icon: github
+          blueprint: "${{ fromJson(inputs.port_context).blueprint }}"
+          properties: |-
+            {
+              "readme": "${{ (inputs.readme && inputs.description != 'null') && inputs.description || '' }}"
+            }
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          runId: ${{fromJson(inputs.port_context).run_id}}
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: .
-
-      - name: Terraform Format
-        run: terraform fmt
-        working-directory: .
-
-      - name: Terraform Destroy
-        run: terraform destroy -var cluster_name=${{ github.event.inputs.Cluster_Name }} -var Region=${{ github.event.inputs.Region }} -auto-approve
-        working-directory: .
-
-      - name: Inform completion of ECS cluster destruction
+      - name: Inform completion of upsertion of GitHub repo
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -115,4 +88,147 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).run_id }}
           logMessage: |
-              ECS cluster destroyed successfully! ✅
+              Upserted GitHub repository successfully! ✅
+      
+      - name: Inform starting of PagerDuty Service creation
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: |
+              Creating PagerDuty service... 🚨
+
+      - name: Create Service in PagerDuty
+        id : create_service_request
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://api.pagerduty.com/services'
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json", "Accept": "application/vnd.pagerduty+json;version=2", "Authorization": "Token token=${{ secrets.PAGERDUTY_API_KEY }}"}'
+          data: >-
+            {
+              "service": {
+                "name": "${{ inputs.name }}",
+                "description": "${{ inputs.description }}",
+                "status": "active",
+                "escalation_policy": {
+                  "id": "${{ inputs.escalation_policy }}",
+                  "type": "escalation_policy_reference"
+                  }
+                }
+              }
+          
+      - name: Log Create Service Request Failure 
+        if: steps.create_service_request.outcome == 'failure'
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "Request to create PagerDuty Service failed ..."
+          
+      - name: Log Request Success
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: |
+              PagerDuty service created! ✅
+              Requesting for on-calls
+    
+      - name: Request for oncalls for Escalation Policy
+        id: fetch_oncalls
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://api.pagerduty.com/oncalls?include[]=users&escalation_policy_ids[]=${{ inputs.escalation_policy }}'
+          method: 'GET'
+          customHeaders: '{"Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token token=${{ secrets.PAGERDUTY_API_KEY }}"}'
+
+      - name: Extract User Emails
+        if: steps.fetch_oncalls.outcome == 'success'
+        id: extract_user_emails
+        run: |
+          echo "Extracting user emails..."
+          EMAILS=$(echo '${{ steps.fetch_oncalls.outputs.response }}' | jq -c '[.oncalls[].user.email]')
+          echo "Extracted emails: $EMAILS"
+          echo "user_emails=${EMAILS}" >> $GITHUB_ENV
+
+      - name: Log Fetch Oncalls Request Failure
+        if: steps.fetch_oncalls.outcome == 'failure'
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: Failed to fetch on-calls ❌
+          
+      - name: Log Before Upserting Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: |
+              Upserting Created PagerDuty Entity
+
+      - name: UPSERT PagerDuty Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          identifier: "${{ fromJson(steps.create_service_request.outputs.response).service.id }}" 
+          title: "${{ fromJson(steps.create_service_request.outputs.response).service.summary }}"
+          icon: pagerduty
+          blueprint: "pagerdutyService"
+          properties: |-
+            {
+              "status": "${{ fromJson(steps.create_service_request.outputs.response).service.status }}",
+              "url": "${{ fromJson(steps.create_service_request.outputs.response).service.html_url }}",
+              "oncall": ${{ env.user_emails }}
+            }
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          runId: ${{fromJson(inputs.port_context).run_id}}
+
+      - name: Log After Upserting Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: |
+              Upserting was successful ✅
+
+      - name: Inform workflow completion
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).run_id }}
+          logMessage: |
+              Workflow completed successfully! 🚀
+
+      - name: Log workflow completion failure
+        if: steps.create_repo.outcome == 'failure' || steps.create_service_request.outcome == 'failure'
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{fromJson(inputs.port_context).run_id}}
+          logMessage: "Scaffolding repository workflow failed..."
