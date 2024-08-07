@@ -19,7 +19,7 @@ on:
 
 jobs:
   manage_cluster: # Combine into a single job
-    runs-on: self-hosted
+    runs-on: Ravi
     defaults:
       run:
         shell: bash
