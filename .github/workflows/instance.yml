@@ -18,9 +18,6 @@ on:
       action:
         description: 'Action to perform (apply/destroy)'  # Action to be performed (create or delete the instance)
         required: true  # This input is required
-      port_context:
-        description: "port_context"
-        required: true
 
 # Jobs to be executed in this workflow
 jobs:
